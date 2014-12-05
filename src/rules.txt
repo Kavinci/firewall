@@ -1,0 +1,2 @@
+interface action protocol port_low port_high ip_src ip_mask ip_dst ip_dst_mask
+eth0 pass tcp 80 80 192.168.1.1 0 192.168.1.2 0
