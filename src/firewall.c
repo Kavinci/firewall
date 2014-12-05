@@ -57,6 +57,7 @@ int main(int argc, char **argv)
 		address[i] = '\0';
 
 	get_hardware_address(ingress,address);
+	resolve_arp_requests(ingress,address);
 	graceful_exit(rules);
 
 	return 0;

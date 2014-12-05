@@ -1,7 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <pcap.h>
 #include "arp-handler.h"
 
-void get_hardware_address(const char *interface, char * address)
+
+
+void get_hardware_address(const char *interface, char *address)
 {
 	struct ifreq req;
 	int sock;
@@ -11,12 +15,58 @@ void get_hardware_address(const char *interface, char * address)
 	strncpy(address,req.ifr_hwaddr.sa_data,MAC_LENGTH);
 }
 
-// void resolve_arp_requests(char *address,char *interface)
-// {
-// 	char error_buffer[PCAP_ERRBUF_SIZE];
-// 	pcap_t *handler = NULL;
-// 	struct pcap_pkthdr packet_header;
-// 	char *packet = NULL;
-// 	arp_packet_t arp_header = NULL;
-// 	uint32_t addr, mask;
-// }
+void resolve_arp_requests(const char *interface, char *address)
+{
+	char err_buff[PCAP_ERRBUF_SIZE];
+	pcap_t *handler = NULL;
+	struct pcap_pkthdr* packet_header;
+	//struct bpf_program *fp;
+	const u_char *packet = NULL;
+	//arp_packet_t arp_header = NULL;
+	//uint32_t addr;
+	int i,result;
+
+	handler = pcap_create(interface,err_buff);
+	if(handler == NULL)
+	{
+		printf("Could not open Interface %s.\n",interface);
+		printf("Error Message: %s\n",err_buff);
+		exit(HANDLE_ERROR);
+	}
+
+	if(!pcap_activate(handler))
+	{
+		printf("Error activating pcap handler.\n");
+		exit(ACTIVATE_ERROR);
+	}
+
+	for(i = 0; i < 1000 ; i++)
+	{
+		result = pcap_next_ex(handler,&packet_header,&packet);
+		if(result == -1)
+		{
+			printf("Packet Error.\n");
+			printf("Error Message: %s\n",err_buff);
+			exit(PACKET_ERROR);
+		}
+		else if (result == -2)
+		{
+			printf("REACHED EOF\n");
+			return;
+		}
+		else if(result == 0)
+		{
+			printf("Callback timed out.\n");
+		}
+		else if(result == 1)
+		{
+			printf("Got a packet with length: %d!\n",packet_header->len);
+		}
+		else
+		{
+			printf("WHAT'S GOING ON: %d\n",result);
+			pcap_perror(handler,err_buff);
+		}
+	}
+
+}
