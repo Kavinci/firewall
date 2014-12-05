@@ -34,13 +34,20 @@ void resolve_arp_requests(const char *interface, char *address)
 		exit(HANDLE_ERROR);
 	}
 
-	if(!pcap_activate(handler))
+	if(pcap_set_timeout(handler,60000))
 	{
-		printf("Error activating pcap handler.\n");
+		printf("Error setting pcap timeout\n");
+		exit(TIMEOUT_ERROR);
+	}
+
+	if(pcap_activate(handler) != 0)
+	{
+		printf("Error activating pcap handler on interface: %s.\n",interface);
+		pcap_perror(handler,err_buff);
 		exit(ACTIVATE_ERROR);
 	}
 
-	for(i = 0; i < 1000 ; i++)
+	for(i = 0; i < 5 ; i++)
 	{
 		result = pcap_next_ex(handler,&packet_header,&packet);
 		if(result == -1)
@@ -64,7 +71,6 @@ void resolve_arp_requests(const char *interface, char *address)
 		}
 		else
 		{
-			printf("WHAT'S GOING ON: %d\n",result);
 			pcap_perror(handler,err_buff);
 		}
 	}

@@ -62,5 +62,6 @@ void resolve_arp_requests(const char *interface, char *address);
 #define LOOKUP_ERROR 201
 #define PACKET_ERROR 202
 #define ACTIVATE_ERROR 203
+#define TIMEOUT_ERROR 204
 
 #endif
