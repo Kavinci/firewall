@@ -17,4 +17,5 @@ firewall: $(FILES)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 clean:
 	rm firewall
-
+curate:
+	rm *.o
