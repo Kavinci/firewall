@@ -35,6 +35,45 @@ uint16_t unpack_port(uint8_t* port)
 	return result;
 }
 
+uint32_t unpack_ip_addr(uint8_t* addr)
+{
+	uint32_t result;
+	result = 0;
+	result += addr[0] << 24;
+	result += addr[1] << 16;
+	result += addr[2] << 8;
+	result += addr[3];
+	return result;
+}
+
+void populate_response(char* resolve,char *address)
+{
+	int i;
+	arp_packet_t resp = (arp_packet_t)(resolve);
+	for(i = 0 ; i < 6 ; i++)
+	{
+		resp->src_mac[i] = address[i];
+		resp->hw_src_addr[i] = address[i];
+		resp->dst_mac[i] = 0xff;
+	}
+
+	resp->ethertype[0] = 0x08;
+	resp->ethertype[1] = 0x06;
+
+	resp->hw_type[0] = 0x00;
+	resp->hw_type[1] = 0x01;
+	resp->pr_type[0] = 0x08;
+	resp->pr_type[1] = 0x00;
+	resp->hw_addr_len = 6;
+	resp->pr_addr_len = 4;
+	resp->opcode[0] = 0;
+	resp->opcode[1] = 2;
+	resp->ip_src_addr[0] = 0xff;
+	resp->ip_src_addr[1] = 0xff;
+	resp->ip_src_addr[2] = 0xff;
+	resp->ip_src_addr[3] = 0xff;
+}
+
 void resolve_arp_requests(const char *interface, char *address)
 {
 	char err_buff[PCAP_ERRBUF_SIZE];
@@ -44,7 +83,13 @@ void resolve_arp_requests(const char *interface, char *address)
 	const u_char *packet = NULL;
 	arp_packet_t arp = NULL;
 	uint32_t net,mask;
-	int i,result;
+	int i,j,result;
+	char resolve[ARP_RESP_LEN];
+	char *compile_program = "ether dst ff:ff:ff:ff:ff:ff";
+	const void *response_packet = (void *)resolve;
+	arp_packet_t resp = (arp_packet_t)(resolve);
+
+	populate_response(resolve,address);
 
 	handler = pcap_create(interface,err_buff);
 	if(handler == NULL)
@@ -77,8 +122,8 @@ void resolve_arp_requests(const char *interface, char *address)
 
 	if(net == 0)
 	{
-		// ether dst ff:ff:ff:ff:ff:ff
-		if(pcap_compile(handler,&fp,"ether dst ff:ff:ff:ff:ff:ff",0,PCAP_NETMASK_UNKNOWN) != 0)
+		
+		if(pcap_compile(handler,&fp,compile_program,0,PCAP_NETMASK_UNKNOWN) != 0)
 		{
 			printf("Can't compile: %s\n", pcap_geterr(handler));
 			exit(COMPILE_ERROR);
@@ -86,7 +131,7 @@ void resolve_arp_requests(const char *interface, char *address)
 	}
 	else
 	{
-		if(pcap_compile(handler,&fp,"ether dst ff:ff:ff:ff:ff:ff",0,net) != 0)
+		if(pcap_compile(handler,&fp,compile_program,0,net) != 0)
 		{
 			printf("Can't compile with netmask: %s\n", pcap_geterr(handler));
 			exit(COMPILE_ERROR);
@@ -121,10 +166,22 @@ void resolve_arp_requests(const char *interface, char *address)
 		}
 		else if(result == 1)
 		{
-			arp = (arp_packet_t)(packet + sizeof(struct ethernet_hdr));
+			arp = (arp_packet_t)(packet);
 			if(unpack_port(arp->pr_type) == ARP_IP)
+			for(j = 0; j < 6; j++)
 			{
-				printf("Found an ARP IP program. Need to send resolution\n");
+				resp->hw_dst_addr[j] = arp->hw_src_addr[j];
+			}
+			for(j = 0; j < 4; j++)
+			{
+				resp->ip_src_addr[j] = arp->ip_dst_addr[j];
+				resp->ip_dst_addr[j] = arp->ip_src_addr[j];
+			}
+
+			result = pcap_inject(handler,response_packet,ARP_RESP_LEN);
+			if(result == -1)
+			{
+				printf("PCAP response injection broke down.\n");
 			}
 		}
 		else

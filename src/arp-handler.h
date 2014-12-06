@@ -40,6 +40,9 @@ typedef struct ip_hdr* ip_hdr_t;
 
 struct arp_packet
 {
+	uint8_t 	dst_mac[6];
+	uint8_t 	src_mac[6];
+	uint8_t 	ethertype[2];
 	uint8_t 	hw_type[2];
 	uint8_t 	pr_type[2];
 	uint8_t 	hw_addr_len;
@@ -52,6 +55,7 @@ struct arp_packet
 };
 typedef struct arp_packet* arp_packet_t;
 
+#define ARP_RESP_LEN 42
 #define ARP_IP 0x0800
 
 void get_hardware_address(const char *interface, char *address);
