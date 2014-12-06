@@ -52,11 +52,11 @@ int main(int argc, char **argv)
 	int i;
 
 	initialize_rules(rules);
-	get_open_port(REPOPULATE_PORT);
 
+	// CREATE ARP RESPONSE MODULE
+	get_open_port(REPOPULATE_PORT);
 	for(i = 0; i <= MAC_LENGTH; i++)
 		address[i] = '\0';
-
 	get_hardware_address(ep1s,address);
 	if(pthread_create( &arp_server, NULL, resolve_arp_requests,(void *) ep1s))
 	{
@@ -64,8 +64,9 @@ int main(int argc, char **argv)
 		exit(THREAD_CREATE_ERROR);
 	}
 
-	pthread_join( arp_server, NULL );
 
+
+	pthread_join( arp_server, NULL );
 	graceful_exit(rules);
 
 	return 0;
