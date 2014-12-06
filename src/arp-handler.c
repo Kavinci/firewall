@@ -76,22 +76,27 @@ void populate_response(char* resolve,char *address)
 
 void resolve_arp_requests(const char *interface, char *address)
 {
-	char err_buff[PCAP_ERRBUF_SIZE];
-	pcap_t *handler = NULL;
-	struct pcap_pkthdr* packet_header;
+	// PCAP STUFF
+	pcap_t *handler 					= NULL;
+	struct pcap_pkthdr* packet_header	= NULL;
 	struct bpf_program fp;
-	const u_char *packet = NULL;
-	arp_packet_t arp = NULL;
-	uint32_t net,mask;
-	int i,j,result;
+	char err_buff[PCAP_ERRBUF_SIZE];
+
+	// GRABBING DATA
+	const u_char *packet 				= NULL;
+	arp_packet_t arp 					= NULL;
+	uint32_t net,mask					= 0;
+	int i,result 						= 0;
+
+	// RESPONDING TO DATA
 	char resolve[ARP_RESP_LEN];
-	char *compile_program = "ether dst ff:ff:ff:ff:ff:ff";
-	const void *response_packet = (void *)resolve;
-	arp_packet_t resp = (arp_packet_t)(resolve);
+	char *compile_program 				= "ether dst ff:ff:ff:ff:ff:ff";
+	const void *response_packet 		= (void *)resolve;
+	arp_packet_t resp 					= (arp_packet_t)(resolve);
 
 	populate_response(resolve,address);
-
 	handler = pcap_create(interface,err_buff);
+	
 	if(handler == NULL)
 	{
 		printf("Could not open Interface %s.\n",interface);
@@ -145,37 +150,21 @@ void resolve_arp_requests(const char *interface, char *address)
 		exit(FILTER_ERROR);
 	}
 
-	for(i = 0; i < 5 ; i++)
+	while(1)
 	{
-		printf("Looking for an ARP Packet\n");
 		result = pcap_next_ex(handler,&packet_header,&packet);
-		if(result == -1)
-		{
-			printf("Packet Error.\n");
-			printf("Error Message: %s\n",err_buff);
-			exit(PACKET_ERROR);
-		}
-		else if (result == -2)
-		{
-			printf("REACHED EOF\n");
-			return;
-		}
-		else if(result == 0)
-		{
-			printf("Callback timed out.\n");
-		}
-		else if(result == 1)
+		if(result == 1)
 		{
 			arp = (arp_packet_t)(packet);
 			if(unpack_port(arp->pr_type) == ARP_IP)
-			for(j = 0; j < 6; j++)
+			for(i = 0; i < 6; i++)
 			{
-				resp->hw_dst_addr[j] = arp->hw_src_addr[j];
+				resp->hw_dst_addr[i] = arp->hw_src_addr[i];
 			}
-			for(j = 0; j < 4; j++)
+			for(i = 0; i < 4; i++)
 			{
-				resp->ip_src_addr[j] = arp->ip_dst_addr[j];
-				resp->ip_dst_addr[j] = arp->ip_src_addr[j];
+				resp->ip_src_addr[i] = arp->ip_dst_addr[i];
+				resp->ip_dst_addr[i] = arp->ip_src_addr[i];
 			}
 
 			result = pcap_inject(handler,response_packet,ARP_RESP_LEN);
@@ -183,6 +172,18 @@ void resolve_arp_requests(const char *interface, char *address)
 			{
 				printf("PCAP response injection broke down.\n");
 			}
+
+		}
+		else if (result == -2)
+		{
+			printf("REACHED EOF\n");
+			return;
+		}
+		else if(result == -1)
+		{
+			printf("Packet Error.\n");
+			printf("Error Message: %s\n",err_buff);
+			exit(PACKET_ERROR);
 		}
 		else
 		{
