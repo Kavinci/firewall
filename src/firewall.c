@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 
 	if(argc != 3)
 	{
-		printf("Usage firewall <input interface> <output interface>");
+		printf("Usage firewall <input interface> <output interface>\n");
 		exit(NOT_ENOUGH_ARGS);
 	}
 	big_bad_world 	= argv[1];
