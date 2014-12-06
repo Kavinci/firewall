@@ -76,6 +76,7 @@ void *forward_icmp(void *interfaces)
 			result = pcap_next_ex(handler_in,&packet_header_in,&packet_in);
 			if(result == 1)
 			{
+				// Need to fix this
 				pcap_inject(handler_out,&packet_in,packet_header_in->len);
 			}
 		}
@@ -84,6 +85,7 @@ void *forward_icmp(void *interfaces)
 			result = pcap_next_ex(handler_in,&packet_header_out,&packet_out);
 			if(result == 1)
 			{
+				// Need to fix this
 				pcap_inject(handler_in,&packet_out,packet_header_out->len);
 			}
 		}
