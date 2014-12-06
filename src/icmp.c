@@ -17,7 +17,7 @@ void *forward_icmp(void *interfaces)
 	const u_char *packet_in					= NULL;
 	const u_char *packet_out				= NULL;
 	io_t ports = (io_t)interfaces;
-	char *compile_program = "ip proto icmp";
+	char *compile_program = "ip and icmp";
 
 
 	err_buff_in[PCAP_ERRBUF_SIZE-1] 	= '\0';
