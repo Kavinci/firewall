@@ -9,9 +9,9 @@ compile:
 	pdflatex final-report.tex
 	pdflatex final-report.tex
 curate:
-	rm *.aux
-	rm *.log
+	rm -f *.aux
+	rm -f *.log
 clean:
-	rm *.pdf 
-	rm *.aux 
-	rm *.log 
+	rm -f *.pdf 
+	rm -f *.aux 
+	rm -f *.log 
