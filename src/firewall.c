@@ -10,6 +10,7 @@
 #include "firewall.h"
 #include "parser.h"
 #include "arp-handler.h"
+#include "icmp.h"
 
 void initialize_rules(rule_t *rules)
 {
@@ -46,27 +47,57 @@ void graceful_exit(rule_t *rules)
 
 int main(int argc, char **argv)
 {	
-	pthread_t arp_server;
+	const char *big_bad_world;
+	const char *protected_space;
+
 	rule_t rules[MAX_RULE_SIZE];
 	char address[MAC_LENGTH + 1];
+
+	pthread_t arp_server;
+	pthread_t icmp_forwarder;
+	
+	char *log_location = "log.txt";
+	struct io pipes;
 	int i;
 
+	if(argc != 3)
+	{
+		printf("Usage firewall <input interface> <output interface>");
+		exit(NOT_ENOUGH_ARGS);
+	}
+	big_bad_world 	= argv[1];
+	protected_space = argv[2];
+
+	// READ THE RULE SET
 	initialize_rules(rules);
 
 	// CREATE ARP RESPONSE MODULE
 	get_open_port(REPOPULATE_PORT);
 	for(i = 0; i <= MAC_LENGTH; i++)
 		address[i] = '\0';
-	get_hardware_address(ep1s,address);
-	if(pthread_create( &arp_server, NULL, resolve_arp_requests,(void *) ep1s))
+	get_hardware_address(protected_space,address);
+	if(pthread_create( &arp_server, NULL, resolve_arp_requests,(void *) protected_space))
 	{
-		printf("Error creating pthread.\n");
+		printf("Error creating pthread for ARP.\n");
+		exit(THREAD_CREATE_ERROR);
+	}
+
+	// CREATE ICMP FORWARDER
+	pipes.input 	= big_bad_world;
+	pipes.output 	= protected_space;
+
+	if(pthread_create( &icmp_forwarder, NULL, forward_icmp,(void *)(&pipes)))
+	{
+		printf("Error creating pthread for ICMP.\n");
 		exit(THREAD_CREATE_ERROR);
 	}
 
 
+	// WRITE TO LOG SOME ENTRIES. CURRENTLY NOTHING TO WRITE. 
+	write_log(log_location,NULL);
 
 	pthread_join( arp_server, NULL );
+	pthread_join( icmp_forwarder, NULL );
 	graceful_exit(rules);
 
 	return 0;

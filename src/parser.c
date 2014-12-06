@@ -215,3 +215,19 @@ void read_rules_file(FILE* fp,rule_t *rules)
 	}
 	printf("Rules Parsed: %d\n",rules_read);
 }
+
+void write_log(char *dest,char** entries)
+{
+	FILE *f = fopen(dest,"w");
+	if(f == NULL)
+	{
+		printf("Unable to open file.\n");
+		exit(FILE_WRITE_ERROR);
+	}
+
+	while(entries != NULL)
+	{
+		fprintf(f, "%s\n", *entries);
+		entries++;
+	}
+}

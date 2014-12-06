@@ -8,5 +8,6 @@
 
 #define RULE_READ_ERROR 1
 #define THREAD_CREATE_ERROR 2
+#define NOT_ENOUGH_ARGS 3
 
 #endif

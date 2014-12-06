@@ -78,9 +78,12 @@ void free_port_structure();
  */
 void read_rules_file(FILE* fp,rule_t* rules);
 
+void write_log(char* dest,char** entries);
+
 
 // ERROR CODES
 
 #define MISREAD_RULE 100
+#define FILE_WRITE_ERROR 101
 
 #endif

@@ -4,8 +4,10 @@ CC = gcc
 LIBS = -lpthread -lpcap
 CFLAGS = -Wall -ggdb -g -funsigned-char
 
-SRCS = parser.c \
+SRCS = communicator.c \
+	parser.c \
 	arp-handler.c \
+	icmp.c \
 	firewall.c 
 HDRS = $(SRCS:.c=.h)
 
@@ -16,6 +18,7 @@ all: firewall
 firewall: $(FILES)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 clean:
-	rm firewall
+	rm -f firewall
+	rm -f log.txt
 curate:
-	rm *.o
+	rm -f *.o
