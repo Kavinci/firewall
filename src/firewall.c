@@ -56,8 +56,8 @@ int main(int argc, char **argv)
 	for(i = 0; i <= MAC_LENGTH; i++)
 		address[i] = '\0';
 
-	get_hardware_address(ingress,address);
-	resolve_arp_requests(ingress,address);
+	get_hardware_address(ep1s,address);
+	resolve_arp_requests(ep1s,address);
 	graceful_exit(rules);
 
 	return 0;

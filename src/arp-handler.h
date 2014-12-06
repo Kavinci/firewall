@@ -40,17 +40,19 @@ typedef struct ip_hdr* ip_hdr_t;
 
 struct arp_packet
 {
-	uint16_t 	hw_type;
-	uint16_t 	pr_type;
+	uint8_t 	hw_type[2];
+	uint8_t 	pr_type[2];
 	uint8_t 	hw_addr_len;
 	uint8_t 	pr_addr_len;
-	uint16_t 	opcode;
+	uint8_t 	opcode[2];
 	uint8_t 	hw_src_addr[6];
 	uint8_t 	ip_src_addr[4];
 	uint8_t 	hw_dst_addr[6];
 	uint8_t 	ip_dst_addr[4];
 };
 typedef struct arp_packet* arp_packet_t;
+
+#define ARP_IP 0x0800
 
 void get_hardware_address(const char *interface, char *address);
 
@@ -63,5 +65,7 @@ void resolve_arp_requests(const char *interface, char *address);
 #define PACKET_ERROR 202
 #define ACTIVATE_ERROR 203
 #define TIMEOUT_ERROR 204
+#define FILTER_ERROR 205
+#define COMPILE_ERROR 206
 
 #endif

@@ -29,6 +29,8 @@ typedef struct rule* rule_t;
 extern const char *ingress;
 extern const char *egress;
 
+extern const char *ep1s;
+extern const char *ep1;
 #define INTERFACE_WORLD 0
 #define INTERFACE_PROTECTED 1
 

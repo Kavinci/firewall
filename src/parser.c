@@ -3,8 +3,13 @@
 
 const char *ingress = 	"wlan0";
 const char *egress 	= 	"eth0";
+
+const char *ep1s 	= 	"ep1s";
+const char *ep1 	= 	"ep1";
+
 const char *pass 	= 	"pass";
 const char *block 	= 	"block";
+
 const char *tcp 	= 	"tcp";
 const char *udp 	= 	"udp";
 
