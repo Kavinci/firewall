@@ -3,7 +3,8 @@
 #include <pcap.h>
 #include "arp-handler.h"
 
-
+const char *global_interface;
+char interface_server[MAC_LENGTH+1];
 
 void get_hardware_address(const char *interface, char *address)
 {
@@ -15,7 +16,12 @@ void get_hardware_address(const char *interface, char *address)
 	strncpy(req.ifr_name,interface,MAX_INTERFACE_STRING_LEN);
 	ioctl(sock,SIOCGIFHWADDR,&req);
 	strncpy(address,req.ifr_hwaddr.sa_data,MAC_LENGTH);
-	printf("Ethernet Address");
+
+	strncpy(interface_server,address,MAC_LENGTH);
+	interface_server[MAC_LENGTH] = '\0';
+	global_interface = interface;
+
+	printf("Ethernet Address: ");
 	for(i = 0; i < 6; i++)
 	{
 		printf("%02x",address[i]);
@@ -74,7 +80,7 @@ void populate_response(char* resolve,char *address)
 	resp->ip_src_addr[3] = 0xff;
 }
 
-void resolve_arp_requests(const char *interface, char *address)
+void *resolve_arp_requests(void *inter)
 {
 	// PCAP STUFF
 	pcap_t *handler 					= NULL;
@@ -94,9 +100,17 @@ void resolve_arp_requests(const char *interface, char *address)
 	const void *response_packet 		= (void *)resolve;
 	arp_packet_t resp 					= (arp_packet_t)(resolve);
 
+	// RESETTING ADDRESS
+	char *address = interface_server;
+	const char *interface = (const char *)inter;
+
+	// Make Sure Correct State
+	if(interface != global_interface)
+		return NULL;
+
 	populate_response(resolve,address);
 	handler = pcap_create(interface,err_buff);
-	
+
 	if(handler == NULL)
 	{
 		printf("Could not open Interface %s.\n",interface);
@@ -112,10 +126,8 @@ void resolve_arp_requests(const char *interface, char *address)
 
 	result = pcap_lookupnet(interface,&net,&mask,err_buff);
 	if (result != 0) {
-		 printf("Can't get netmask for device: %s with error %d.\n", interface,result);
 		 net = 0;
 		 mask = 0;
-		 //exit(LOOKUP_ERROR);
 	 }
 
 	if(pcap_activate(handler) != 0)
@@ -177,7 +189,7 @@ void resolve_arp_requests(const char *interface, char *address)
 		else if (result == -2)
 		{
 			printf("REACHED EOF\n");
-			return;
+			return NULL;
 		}
 		else if(result == -1)
 		{
@@ -185,10 +197,5 @@ void resolve_arp_requests(const char *interface, char *address)
 			printf("Error Message: %s\n",err_buff);
 			exit(PACKET_ERROR);
 		}
-		else
-		{
-			pcap_perror(handler,err_buff);
-		}
 	}
-
 }

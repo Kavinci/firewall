@@ -60,7 +60,7 @@ typedef struct arp_packet* arp_packet_t;
 
 void get_hardware_address(const char *interface, char *address);
 
-void resolve_arp_requests(const char *interface, char *address);
+void *resolve_arp_requests(void *inter);
 
 // ERROR CODES
 
@@ -71,5 +71,6 @@ void resolve_arp_requests(const char *interface, char *address);
 #define TIMEOUT_ERROR 204
 #define FILTER_ERROR 205
 #define COMPILE_ERROR 206
+#define UNKNOWN_ERROR 207
 
 #endif

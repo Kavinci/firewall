@@ -7,5 +7,6 @@
 #define MAX_RULE_SIZE 10
 
 #define RULE_READ_ERROR 1
+#define THREAD_CREATE_ERROR 2
 
 #endif

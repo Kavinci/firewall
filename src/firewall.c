@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <pcap.h>  /* GIMME a libpcap plz! */
+#include <pcap.h> 
 #include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #include "firewall.h"
 #include "parser.h"
@@ -45,7 +46,7 @@ void graceful_exit(rule_t *rules)
 
 int main(int argc, char **argv)
 {	
-	printf("Starting program %s.\n",argv[0]);
+	pthread_t arp_server;
 	rule_t rules[MAX_RULE_SIZE];
 	char address[MAC_LENGTH + 1];
 	int i;
@@ -57,7 +58,14 @@ int main(int argc, char **argv)
 		address[i] = '\0';
 
 	get_hardware_address(ep1s,address);
-	resolve_arp_requests(ep1s,address);
+	if(pthread_create( &arp_server, NULL, resolve_arp_requests,(void *) ep1s))
+	{
+		printf("Error creating pthread.\n");
+		exit(THREAD_CREATE_ERROR);
+	}
+
+	pthread_join( arp_server, NULL );
+
 	graceful_exit(rules);
 
 	return 0;
