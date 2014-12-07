@@ -76,6 +76,7 @@ uint16_t unpack_port(uint8_t* port);
 uint32_t unpack_ip_addr(uint8_t* addr);
 
 void pack_ip_addr(uint8_t* store,uint32_t addr);
+void pack_and_convert_ip_addr(uint8_t* store,uint32_t addr);
 
 void pack_port(uint8_t* store, uint16_t port);
 

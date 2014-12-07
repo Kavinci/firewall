@@ -31,6 +31,12 @@ void pack_ip_addr(uint8_t* store,uint32_t addr)
 	memcpy(store,&addr,sizeof(addr));
 }
 
+void pack_and_convert_ip_addr(uint8_t* store,uint32_t addr)
+{
+	addr = htonl(addr);
+	memcpy(store,&addr,sizeof(addr));
+}
+
 void pack_port(uint8_t* store, uint16_t port)
 {
 	port = htons(port);

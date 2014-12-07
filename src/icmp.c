@@ -78,8 +78,9 @@ void *forward_icmp(void *interfaces)
 			result = pcap_next_ex(handler_in,&packet_header_in,&packet_in);
 			if(result == 1)
 			{
-				// Need to fix this
-				pcap_inject(handler_out,&packet_in,packet_header_in->len);
+				printf("Got a ICMP reply!: %p\n",packet_header_in);
+				transfer_to_protected_space(handler_out,packet_in,packet_header_in->len);
+				printf("Transmitted!\n");
 			}
 		}
 		else
@@ -87,9 +88,7 @@ void *forward_icmp(void *interfaces)
 			result = pcap_next_ex(handler_out,&packet_header_out,&packet_out);
 			if(result == 1)
 			{
-				printf("Got an ICMP request!: %p\n",packet_out);
 				transfer_to_world(handler_in,packet_out,packet_header_out->len);
-				printf("Transmitted!\n");
 			}
 		}
 		turn++;

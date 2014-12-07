@@ -22,6 +22,8 @@ void get_my_addresses(const char *interface, char *address,char *inet_addr);
 
 void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len);
 
+void transfer_to_protected_space(pcap_t *out,const u_char *packet_to_send,int len);
+
 // ERROR CODES
 
 #define UNDEFINED_INTERFACE 500

@@ -15,6 +15,7 @@
 
 nat_mapping_t safe_to_unsafe_mapping_tcp[PORT_RANGE];
 nat_mapping_t safe_to_unsafe_mapping_udp[PORT_RANGE];
+nat_mapping_t translation_ICMP[0xff];
 
 const char *global_interface;
 
@@ -82,7 +83,6 @@ void set_up_outgoing_ether(nat_mapping_t map,ethernet_hdr_t packet_ether)
 			map->originator_hw_addr[i] = packet_ether->src_mac[i];
 		}
 		packet_ether->src_mac[i] = global_self_hw_addr[i];
-
 		packet_ether->dst_mac[i] = global_gtwy_hw_addr[i];
 	}
 }
@@ -178,10 +178,13 @@ void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
 			}
 		break;
 		case PROTOCOL_ICMP:
-			set_up_outgoing_ether(NULL,packet_ether);
+			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+			set_up_outgoing_ether(map,packet_ether);
+			ip_src = unpack_ip_addr(packet_ip->src_ip);
+			map->originator_ip_addr = ip_src;
+			translation_ICMP[packet_ip->dst_ip[0]] = map;
 			pack_ip_addr(packet_ip->src_ip,my_src);
 			calculate_ip_checksum(packet_ip);
-
 			result = pcap_inject(out,packet_to_send,len);
 			if(result == -1)
 			{
@@ -198,11 +201,91 @@ void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
 	printf("Returning from transfer\n");
 }
 
-void transfer_to_protected_space(pcap_t *protected_space, char *packet_to_send)
+void set_up_ether_to_protected(nat_mapping_t map,ethernet_hdr_t packet_ether)
 {
-	// Take the packet. Use reverse mapping to find where to send
-	// Update packet to show it's coming from us to whoever wanted it
-	// PCAP INJECT it to desired host.
+	int i;
+	for(i = 0; i < 6; i++)
+	{
+		packet_ether->dst_mac[i] = map->originator_hw_addr[i];
+		packet_ether->src_mac[i] = global_self_hw_addr[i];
+	}
+}
+
+void transfer_to_protected_space(pcap_t *out, const u_char *packet_to_send,int len)
+{
+	ethernet_hdr_t packet_ether;
+	ip_hdr_t packet_ip;
+	tcp_hdr_t packet_tcp;
+	udp_hdr_t packet_udp;
+	uint16_t src_port,nat_port;
+	uint32_t ip_src,my_src;
+	nat_mapping_t map;
+	struct sockaddr_in mine;
+	int result;
+
+	inet_aton(global_self_inet_addr,&mine.sin_addr);
+	my_src = mine.sin_addr.s_addr;
+	packet_ether = (ethernet_hdr_t)packet_to_send;
+	packet_ip = (ip_hdr_t)packet_ether->data;
+	packet_tcp = (tcp_hdr_t)packet_ip->options_and_data;
+	packet_udp = (udp_hdr_t)packet_ip->options_and_data;
+	switch(packet_ip->protocol)
+	{
+		case PROTOCOL_UDP:
+			src_port = unpack_port(packet_udp->src_port);
+			ip_src = unpack_ip_addr(packet_ip->src_ip);
+			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
+			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+			set_up_outgoing_ether(map,packet_ether);
+
+			map->originator_ip_addr = ip_src;
+			map->originator_src_port = src_port;
+			pack_ip_addr(packet_ip->src_ip,my_src);
+			pack_port(packet_udp->src_port,nat_port);
+			safe_to_unsafe_mapping_udp[nat_port] = map;
+			calculate_ip_checksum(packet_ip);
+			//calculate_udp_checksum(packet_udp);
+			result = pcap_inject(out,packet_to_send,len);
+			if(result == -1)
+			{
+				printf("PCAP response injection broke down.\n");
+			}
+		break;
+		case PROTOCOL_TCP:
+			src_port = unpack_port(packet_tcp->src_port); // DOENS"T WORK
+			ip_src = unpack_ip_addr(packet_ip->src_ip);
+			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
+			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+			set_up_outgoing_ether(map,packet_ether);
+
+			map->originator_ip_addr = ip_src;
+			map->originator_src_port = src_port;
+			pack_ip_addr(packet_ip->src_ip,my_src);
+			pack_port(packet_tcp->src_port,nat_port);
+			safe_to_unsafe_mapping_tcp[nat_port] = map;
+			calculate_ip_checksum(packet_ip);
+			result = pcap_inject(out,packet_to_send,len);
+			if(result == -1)
+			{
+				printf("PCAP response injection broke down.\n");
+			}
+		break;
+		case PROTOCOL_ICMP:
+			map = translation_ICMP[packet_ip->src_ip[0]];
+			set_up_ether_to_protected(map,packet_ether);
+			pack_and_convert_ip_addr(packet_ip->dst_ip,map->originator_ip_addr);
+			calculate_ip_checksum(packet_ip);
+
+			result = pcap_inject(out,packet_to_send,len);
+			if(result == -1)
+			{
+				printf("PCAP response injection broke down.\n");
+			}
+		break;
+		default:
+
+		break;
+	}
 }
 
 
