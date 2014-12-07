@@ -26,5 +26,14 @@ firewall but it is poorly designed. Packets are just haphazardly forwarded.
 Once that interface is done, it will be easy to enumerate over the set of rules
 and forward packets that need to be forwarded and drop those that do not.
 
+UPDATE FROM LATE DAY.
+
+All inteface to interface communication works. The forwarding abstraction 
+has been fixed. There is something wrong with my TCP checksum calculation,
+but once I fix it, it will flow and I will be able to resolve webpages in 
+my virtual netspace. Once that is done, I can actually implement the 
+firewall rule checking... I know that's the core part of this project, but
+I have all of the other parts well implemented and tested. 
+
 Thanks for looking at the code.
 Akshay Dongaonkar (akd54).
