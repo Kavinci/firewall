@@ -13,8 +13,7 @@
 #include "defs.h"
 #include "parser.h"
 
-nat_mapping_t safe_to_unsafe_mapping_tcp[PORT_RANGE];
-nat_mapping_t safe_to_unsafe_mapping_udp[PORT_RANGE];
+nat_mapping_t safe_to_unsafe_mapping[PORT_RANGE];
 nat_mapping_t translation_ICMP[0xff];
 
 const char *global_interface;
@@ -31,8 +30,7 @@ void initialize_NAT_mappings()
 	int i;
 	for(i = 0; i < PORT_RANGE; i++)
 	{
-		safe_to_unsafe_mapping_udp[i] = NULL;
-		safe_to_unsafe_mapping_tcp[i] = NULL;
+		safe_to_unsafe_mapping[i] = NULL;
 
 		// unsafe_to_safe_mapping_udp[i] = NULL;
 		// unsafe_to_safe_mapping_tcp[i] = NULL;
@@ -237,14 +235,13 @@ void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
 			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
 			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
 			set_up_outgoing_ether(map,packet_ether);
-
 			map->originator_ip_addr = ip_src;
 			map->originator_src_port = src_port;
 			pack_ip_addr(packet_ip->src_ip,my_src);
 			pack_port(packet_udp->src_port,nat_port);
-			safe_to_unsafe_mapping_udp[nat_port] = map;
+			safe_to_unsafe_mapping[nat_port] = map;
 			calculate_ip_checksum(packet_ip);
-			//calculate_udp_checksum(packet_udp);
+			calculate_udp_checksum(packet_ip,packet_udp);
 			result = pcap_inject(out,packet_to_send,len);
 			if(result == -1)
 			{
@@ -257,12 +254,11 @@ void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
 			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
 			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
 			set_up_outgoing_ether(map,packet_ether);
-
 			map->originator_ip_addr = ip_src;
 			map->originator_src_port = src_port;
 			pack_ip_addr(packet_ip->src_ip,my_src);
 			pack_port(packet_tcp->src_port,nat_port);
-			safe_to_unsafe_mapping_tcp[nat_port] = map;
+			safe_to_unsafe_mapping[nat_port] = map;
 			calculate_ip_checksum(packet_ip);
 			result = pcap_inject(out,packet_to_send,len);
 			if(result == -1)
@@ -278,6 +274,7 @@ void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
 			translation_ICMP[packet_ip->dst_ip[0]] = map;
 			pack_ip_addr(packet_ip->src_ip,my_src);
 			calculate_ip_checksum(packet_ip);
+			calculate_tcp_checksum(packet_ip,packet_tcp);
 			result = pcap_inject(out,packet_to_send,len);
 			if(result == -1)
 			{
@@ -310,14 +307,10 @@ void transfer_to_protected_space(pcap_t *out, const u_char *packet_to_send,int l
 	ip_hdr_t packet_ip;
 	tcp_hdr_t packet_tcp;
 	udp_hdr_t packet_udp;
-	uint16_t src_port,nat_port;
-	uint32_t ip_src,my_src;
+	uint16_t dst_port;
 	nat_mapping_t map;
-	struct sockaddr_in mine;
 	int result;
 
-	inet_aton(global_self_inet_addr,&mine.sin_addr);
-	my_src = mine.sin_addr.s_addr;
 	packet_ether = (ethernet_hdr_t)packet_to_send;
 	packet_ip = (ip_hdr_t)packet_ether->data;
 	packet_tcp = (tcp_hdr_t)packet_ip->options_and_data;
@@ -325,19 +318,14 @@ void transfer_to_protected_space(pcap_t *out, const u_char *packet_to_send,int l
 	switch(packet_ip->protocol)
 	{
 		case PROTOCOL_UDP:
-			src_port = unpack_port(packet_udp->src_port);
-			ip_src = unpack_ip_addr(packet_ip->src_ip);
-			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
-			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
-			set_up_outgoing_ether(map,packet_ether);
+			dst_port = unpack_port(packet_udp->dst_port);
+			map = safe_to_unsafe_mapping[dst_port];
+			set_up_ether_to_protected(map,packet_ether);
 
-			map->originator_ip_addr = ip_src;
-			map->originator_src_port = src_port;
-			pack_ip_addr(packet_ip->src_ip,my_src);
-			pack_port(packet_udp->src_port,nat_port);
-			safe_to_unsafe_mapping_udp[nat_port] = map;
+			pack_and_convert_ip_addr(packet_ip->dst_ip,map->originator_ip_addr);
+			pack_port(packet_udp->dst_port,map->originator_src_port);
 			calculate_ip_checksum(packet_ip);
-			//calculate_udp_checksum(packet_udp);
+			calculate_udp_checksum(packet_ip,packet_udp);
 			result = pcap_inject(out,packet_to_send,len);
 			if(result == -1)
 			{
@@ -345,18 +333,14 @@ void transfer_to_protected_space(pcap_t *out, const u_char *packet_to_send,int l
 			}
 		break;
 		case PROTOCOL_TCP:
-			src_port = unpack_port(packet_tcp->src_port); // DOENS"T WORK
-			ip_src = unpack_ip_addr(packet_ip->src_ip);
-			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
-			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
-			set_up_outgoing_ether(map,packet_ether);
+			dst_port = unpack_port(packet_tcp->dst_port);
+			map = safe_to_unsafe_mapping[dst_port];
+			set_up_ether_to_protected(map,packet_ether);
 
-			map->originator_ip_addr = ip_src;
-			map->originator_src_port = src_port;
-			pack_ip_addr(packet_ip->src_ip,my_src);
-			pack_port(packet_tcp->src_port,nat_port);
-			safe_to_unsafe_mapping_tcp[nat_port] = map;
+			pack_and_convert_ip_addr(packet_ip->dst_ip,map->originator_ip_addr);
+			pack_port(packet_tcp->dst_port,map->originator_src_port);
 			calculate_ip_checksum(packet_ip);
+			calculate_tcp_checksum(packet_ip,packet_tcp);
 			result = pcap_inject(out,packet_to_send,len);
 			if(result == -1)
 			{
