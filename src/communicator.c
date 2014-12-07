@@ -151,17 +151,64 @@ void calculate_udp_checksum(ip_hdr_t packet_ip,udp_hdr_t packet_udp)
 	acc = acc + src_addr[0] + src_addr[1];
 	acc = acc + dst_addr[0] + dst_addr[1];
 
-	acc = acc + protocol;
+	acc = acc + htons(protocol);
 	acc = acc + length;
-	acc = (acc & 0xffff);
+	while (acc >> 16)
+		acc = (acc & 0xffff) + (acc >> 16);
 	acc = ~acc;
 	final_checksum = (uint16_t)acc;
 	pack_port(packet_udp->checksum,final_checksum);
 }
 
-void calculate_tcp_checksum(tcp_hdr_t packet_tcp)
+void calculate_tcp_checksum(ip_hdr_t packet_ip,tcp_hdr_t packet_tcp)
 {
-	
+	uint16_t src_addr[2];
+	uint16_t dst_addr[2];
+	uint16_t protocol;
+	uint16_t length;
+	uint16_t counter;
+	uint32_t acc;
+	uint16_t *tcp_iterator;
+	uint16_t final_checksum;
+
+	src_addr[0] = (packet_ip->src_ip[0] << 8) + packet_ip->src_ip[1];
+	src_addr[1] = (packet_ip->src_ip[2] << 8) + packet_ip->src_ip[3];
+
+	dst_addr[0] = (packet_ip->dst_ip[0] << 8) + packet_ip->dst_ip[1];
+	dst_addr[1] = (packet_ip->dst_ip[2] << 8) + packet_ip->dst_ip[3];
+
+	protocol = PROTOCOL_TCP;
+	length = (packet_ip->total_len[0] << 8) + packet_ip->total_len[1];
+	counter = length;
+	tcp_iterator = (uint16_t *)packet_tcp;
+
+	acc = 0;
+	while (counter > 1)
+	{
+		acc = acc + *(tcp_iterator);
+		tcp_iterator++;
+		if(acc & 0x80000000)
+		{
+			acc = (acc & 0xffff) + (acc >> 16);
+		}
+		counter = counter - 2;
+	}
+
+	if(counter & 1) // Faster comparison
+	{
+		acc = acc + *((uint8_t *)tcp_iterator);
+	}
+
+	acc = acc + src_addr[0] + src_addr[1];
+	acc = acc + dst_addr[0] + dst_addr[1];
+
+	acc = acc + htons(protocol);
+	acc = acc + length;
+	while(acc >> 16)
+		acc = (acc & 0xffff) + (acc >> 16);
+	acc = ~acc;
+	final_checksum = (uint16_t)acc;
+	pack_port(packet_tcp->checksum,final_checksum);
 }
 
 void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
