@@ -78,9 +78,7 @@ void *forward_icmp(void *interfaces)
 			result = pcap_next_ex(handler_in,&packet_header_in,&packet_in);
 			if(result == 1)
 			{
-				printf("Got a ICMP reply!: %p\n",packet_header_in);
 				transfer_to_protected_space(handler_out,packet_in,packet_header_in->len);
-				printf("Transmitted!\n");
 			}
 		}
 		else

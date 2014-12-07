@@ -108,9 +108,55 @@ void calculate_ip_checksum(ip_hdr_t packet_ip)
 	pack_port(packet_ip->header_checksum,~acc);
 }
 
-void calculate_udp_checksum(udp_hdr_t packet_udp)
+void calculate_udp_checksum(ip_hdr_t packet_ip,udp_hdr_t packet_udp)
 {
-	
+	uint16_t src_addr[2];
+	uint16_t dst_addr[2];
+	uint16_t protocol;
+	uint16_t length;
+	uint16_t udp_length;
+	uint16_t word;
+	int i,pad;
+	uint32_t acc;
+	uint16_t final_checksum;
+	char *buff;
+
+	src_addr[0] = (packet_ip->src_ip[0] << 8) + packet_ip->src_ip[1];
+	src_addr[1] = (packet_ip->src_ip[2] << 8) + packet_ip->src_ip[3];
+
+	dst_addr[0] = (packet_ip->dst_ip[0] << 8) + packet_ip->dst_ip[1];
+	dst_addr[1] = (packet_ip->dst_ip[2] << 8) + packet_ip->dst_ip[3];
+
+	packet_udp->checksum[0] = 0x00;
+	packet_udp->checksum[1] = 0x00;
+
+	protocol = PROTOCOL_UDP;
+	length = (packet_ip->total_len[0] << 8) + packet_ip->total_len[1];
+	udp_length = (packet_udp->length[0] << 8) + packet_udp->length[1];
+
+	buff = (char *)packet_udp;
+	acc = 0;
+	if(udp_length % 2 == 0)
+		pad = 1;
+
+	for(i = 0; i < udp_length + pad; i+=2)
+	{
+		if(i+1 < udp_length)
+			word =((buff[i]<<8)&0xFF00)+(buff[i+1]&0xFF);
+		else
+			word =((buff[i]<<8)&0xFF00);
+		acc = acc + word;
+	}
+
+	acc = acc + src_addr[0] + src_addr[1];
+	acc = acc + dst_addr[0] + dst_addr[1];
+
+	acc = acc + protocol;
+	acc = acc + length;
+	acc = (acc & 0xffff);
+	acc = ~acc;
+	final_checksum = (uint16_t)acc;
+	pack_port(packet_udp->checksum,final_checksum);
 }
 
 void calculate_tcp_checksum(tcp_hdr_t packet_tcp)

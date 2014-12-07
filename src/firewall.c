@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 	// CREATE ARP RESPONSE MODULE
 	run_arp_server();
 
-	// CREATE ICMP FORWARDER
+	// CREATE ICMP FORWARDER - on average 27 ms delay
 	run_icmp_forwarder();
 
 
