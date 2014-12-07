@@ -80,6 +80,8 @@ void read_rules_file(FILE* fp,rule_t* rules);
 
 void write_log(char* dest,char** entries);
 
+char* get_mac_address(const char *interface, char *address);
+
 
 // ERROR CODES
 

@@ -53,7 +53,7 @@ uint16_t get_open_port(int repopulate)
 			fclose(fp);
 	}
 
-	i = PORT_RANGE - 1;
+	i = PORT_RANGE - 5000;
 	while(open_ports[i] == 0 && i > 0)
 	{
 		i--;
@@ -230,4 +230,7 @@ void write_log(char *dest,char** entries)
 		fprintf(f, "%s\n", *entries);
 		entries++;
 	}
+
+	if(f != NULL)
+		fclose(f);
 }

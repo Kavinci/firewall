@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pcap.h>
 #include "arp-handler.h"
+#include "defs.h"
 
 const char *global_interface;
 char interface_server[MAC_LENGTH+1];
@@ -32,25 +33,16 @@ void get_hardware_address(const char *interface, char *address)
 	}
 }
 
-uint16_t unpack_port(uint8_t* port)
+char* get_mac_address(const char *interface, char *address)
 {
-	uint16_t result;
-	result = 0;
-	result += port[0] << 8;
-	result += port[1];
-	return result;
+	if(interface_server[MAC_LENGTH] != '\0')
+	{
+		get_hardware_address(interface,address);
+	}
+	return interface_server;
 }
 
-uint32_t unpack_ip_addr(uint8_t* addr)
-{
-	uint32_t result;
-	result = 0;
-	result += addr[0] << 24;
-	result += addr[1] << 16;
-	result += addr[2] << 8;
-	result += addr[3];
-	return result;
-}
+
 
 void populate_response(char* resolve,char *address)
 {

@@ -3,6 +3,7 @@
 #include <pcap.h>
 
 #include "icmp.h"
+#include "communicator.h"
 
 void *forward_icmp(void *interfaces)
 {
@@ -14,8 +15,8 @@ void *forward_icmp(void *interfaces)
 	struct bpf_program fp_out;
 	char err_buff_in[PCAP_ERRBUF_SIZE];
 	char err_buff_out[PCAP_ERRBUF_SIZE];
-	const u_char *packet_in					= NULL;
-	const u_char *packet_out				= NULL;
+	const u_char *packet_in;
+	const u_char *packet_out;
 	io_t ports = (io_t)interfaces;
 	char *compile_program = "ip and icmp";
 
@@ -69,6 +70,7 @@ void *forward_icmp(void *interfaces)
 		exit(ICMP_FILTER_ERROR);
 	}
 
+	printf("Setting up ICMP loop.\n");
 	while(1)
 	{
 		if(turn % 2)
@@ -82,11 +84,12 @@ void *forward_icmp(void *interfaces)
 		}
 		else
 		{
-			result = pcap_next_ex(handler_in,&packet_header_out,&packet_out);
+			result = pcap_next_ex(handler_out,&packet_header_out,&packet_out);
 			if(result == 1)
 			{
-				// Need to fix this
-				pcap_inject(handler_in,&packet_out,packet_header_out->len);
+				printf("Got an ICMP request!: %p\n",packet_out);
+				transfer_to_world(handler_in,packet_out,packet_header_out->len);
+				printf("Transmitted!\n");
 			}
 		}
 		turn++;

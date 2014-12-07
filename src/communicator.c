@@ -10,8 +10,35 @@
 #include <pcap.h>
 
 #include "communicator.h"
+#include "defs.h"
+#include "parser.h"
 
-void get_ip_address_behind_gateway(const char *interface, char *address,char *inet_addr)
+nat_mapping_t safe_to_unsafe_mapping_tcp[PORT_RANGE];
+nat_mapping_t safe_to_unsafe_mapping_udp[PORT_RANGE];
+
+const char *global_interface;
+
+const char global_gtwy_hw_addr[MAC_LENGTH] = GATEWAY_HW_ADDR;
+const char *global_gtwy_inet_addr = GATEWAY;
+
+char global_self_hw_addr[MAC_LENGTH+1];
+char global_self_inet_addr[IP_LENGTH];
+uint32_t global_self_inet_addr_net_order;
+
+void initialize_NAT_mappings()
+{
+	int i;
+	for(i = 0; i < PORT_RANGE; i++)
+	{
+		safe_to_unsafe_mapping_udp[i] = NULL;
+		safe_to_unsafe_mapping_tcp[i] = NULL;
+
+		// unsafe_to_safe_mapping_udp[i] = NULL;
+		// unsafe_to_safe_mapping_tcp[i] = NULL;
+	}
+}
+
+void get_my_addresses(const char *interface, char *address,char *inet_addr)
 {
 	struct ifreq req;
 	int sock;
@@ -22,11 +49,9 @@ void get_ip_address_behind_gateway(const char *interface, char *address,char *in
 	req.ifr_addr.sa_family = AF_INET;
 
 	ioctl(sock,SIOCGIFHWADDR,&req);
-	ioctl(sock,SIOCGIFADDR,&req);
-
 	strncpy(address,req.ifr_hwaddr.sa_data,MAC_LENGTH);
-
-	printf("Address that talks to Gateway: ");
+	strncpy(global_self_hw_addr,req.ifr_hwaddr.sa_data,MAC_LENGTH);
+	printf("My Hardware Address: ");
 	for(i = 0; i < 6; i++)
 	{
 		printf("%02x",address[i]);
@@ -35,12 +60,149 @@ void get_ip_address_behind_gateway(const char *interface, char *address,char *in
 		else
 			printf("\n");
 	}
+
+	ioctl(sock,SIOCGIFADDR,&req);
 	i = strlen(inet_ntoa(((struct sockaddr_in *)&req.ifr_addr)->sin_addr));
 	strncpy(inet_addr,inet_ntoa(((struct sockaddr_in *)&req.ifr_addr)->sin_addr),i);
+	strncpy(global_self_inet_addr,inet_ntoa(((struct sockaddr_in *)&req.ifr_addr)->sin_addr),i);
 	printf("Internet Address: %s\n",inet_addr);
 }
 
-void do_nothing()
+/*
+ *  Need to make sure those addresses are defined
+ *  by calling get_my_addresses before.
+ */
+void set_up_outgoing_ether(nat_mapping_t map,ethernet_hdr_t packet_ether)
 {
-	return;
+	int i;
+	for(i = 0; i < 6; i++)
+	{
+		if(map != NULL)
+		{
+			map->originator_hw_addr[i] = packet_ether->src_mac[i];
+		}
+		packet_ether->src_mac[i] = global_self_hw_addr[i];
+
+		packet_ether->dst_mac[i] = global_gtwy_hw_addr[i];
+	}
 }
+
+// Verified Correct
+void calculate_ip_checksum(ip_hdr_t packet_ip)
+{
+	int i;
+	uint16_t word;
+	uint32_t acc=0xffff;
+	packet_ip->header_checksum[0] = 0x00;
+	packet_ip->header_checksum[1] = 0x00;
+
+	for(i = 0; i < IP_HDR_LEN; i+=2)
+	{
+		memcpy(&word,((char *)packet_ip) + i,2);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+	}
+	// Put the accumulator in network byte order
+	pack_port(packet_ip->header_checksum,~acc);
+}
+
+void calculate_udp_checksum(udp_hdr_t packet_udp)
+{
+	
+}
+
+void calculate_tcp_checksum(tcp_hdr_t packet_tcp)
+{
+	
+}
+
+void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
+{
+	ethernet_hdr_t packet_ether;
+	ip_hdr_t packet_ip;
+	tcp_hdr_t packet_tcp;
+	udp_hdr_t packet_udp;
+	uint16_t src_port,nat_port;
+	uint32_t ip_src,my_src;
+	nat_mapping_t map;
+	struct sockaddr_in mine;
+	int result;
+
+	inet_aton(global_self_inet_addr,&mine.sin_addr);
+	my_src = mine.sin_addr.s_addr;
+	packet_ether = (ethernet_hdr_t)packet_to_send;
+	packet_ip = (ip_hdr_t)packet_ether->data;
+	packet_tcp = (tcp_hdr_t)packet_ip->options_and_data;
+	packet_udp = (udp_hdr_t)packet_ip->options_and_data;
+	switch(packet_ip->protocol)
+	{
+		case PROTOCOL_UDP:
+			src_port = unpack_port(packet_udp->src_port);
+			ip_src = unpack_ip_addr(packet_ip->src_ip);
+			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
+			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+			set_up_outgoing_ether(map,packet_ether);
+
+			map->originator_ip_addr = ip_src;
+			map->originator_src_port = src_port;
+			pack_ip_addr(packet_ip->src_ip,my_src);
+			pack_port(packet_udp->src_port,nat_port);
+			safe_to_unsafe_mapping_udp[nat_port] = map;
+			calculate_ip_checksum(packet_ip);
+			//calculate_udp_checksum(packet_udp);
+			result = pcap_inject(out,packet_to_send,len);
+			if(result == -1)
+			{
+				printf("PCAP response injection broke down.\n");
+			}
+		break;
+		case PROTOCOL_TCP:
+			src_port = unpack_port(packet_tcp->src_port);
+			ip_src = unpack_ip_addr(packet_ip->src_ip);
+			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
+			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+			set_up_outgoing_ether(map,packet_ether);
+
+			map->originator_ip_addr = ip_src;
+			map->originator_src_port = src_port;
+			pack_ip_addr(packet_ip->src_ip,my_src);
+			pack_port(packet_tcp->src_port,nat_port);
+			safe_to_unsafe_mapping_tcp[nat_port] = map;
+			calculate_ip_checksum(packet_ip);
+			result = pcap_inject(out,packet_to_send,len);
+			if(result == -1)
+			{
+				printf("PCAP response injection broke down.\n");
+			}
+		break;
+		case PROTOCOL_ICMP:
+			set_up_outgoing_ether(NULL,packet_ether);
+			pack_ip_addr(packet_ip->src_ip,my_src);
+			calculate_ip_checksum(packet_ip);
+
+			result = pcap_inject(out,packet_to_send,len);
+			if(result == -1)
+			{
+				printf("PCAP response injection broke down.\n");
+			}
+		break;
+		default:
+			printf("Unknown Protocol being sent out: %d\n",packet_ip->protocol);
+			return;
+		break;
+	}
+	// Compute Checksum
+	// PCAP INJECT
+	printf("Returning from transfer\n");
+}
+
+void transfer_to_protected_space(pcap_t *protected_space, char *packet_to_send)
+{
+	// Take the packet. Use reverse mapping to find where to send
+	// Update packet to show it's coming from us to whoever wanted it
+	// PCAP INJECT it to desired host.
+}
+
+

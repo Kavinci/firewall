@@ -4,17 +4,18 @@ CC = gcc
 LIBS = -lpthread -lpcap
 CFLAGS = -Wall -ggdb -g -funsigned-char
 
-SRCS = communicator.c \
-	parser.c \
-	arp-handler.c \
-	icmp.c \
+SRCS = defs.c 		\
+	communicator.c 	\
+	parser.c 		\
+	arp-handler.c 	\
+	icmp.c 			\
 	firewall.c 
 HDRS = $(SRCS:.c=.h)
 
 FILES = $(SRCS) $(HDRS)
 
 all: firewall
-	./firewall
+	sudo ./firewall wlan0 ep1s
 firewall: $(FILES)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 clean:
