@@ -31,6 +31,11 @@ struct io pipes;
 char big_bad_mac[MAC_LENGTH + 1];
 char big_bad_ip[IP_LENGTH];
 
+/** @fn void initialize_rules(rule_t *rules)
+ *  @brief Parse rules and convert it into internal structures.
+ *
+ *  Refer to parser.h for how these rules are read.
+ */
 void initialize_rules(rule_t *rules)
 {
 	FILE *fp;
@@ -106,7 +111,15 @@ void run_global_forwarder()
 }
 
 
-
+/** @fn int main(int argc, char **argv)
+ *  @brief Main entrypoint for the firewall.
+ *
+ *  Usage: Call ./firewall int0 int1
+ *  int0 - Input Interface (connection to outside world)
+ *  int1 - Output Interface (connection to protected space)
+ *  
+ *  You might need to run this with sudo if you do not have permissions.
+ */
 int main(int argc, char **argv)
 {	
 

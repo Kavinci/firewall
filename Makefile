@@ -20,8 +20,7 @@ netspace:
 	sudo ip netns exec ep1 route add default gw 10.0.0.1
 	sudo ip netns exec ep1 bash
 doc:
-	doxygen doc/Doxyfile
-	google-chrome /home/akshay/cs5434/firewall/html/index.html
+	doxygen doc/firewall_doxyfile
 clean:
 	cd src && make clean
 	cd reports/final && make clean
