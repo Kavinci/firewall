@@ -1,8 +1,7 @@
-firewall
+Firewall
 ========
 
-Simple C Firewall - Status of project.
-
+This is a simple firewall that mediates packets between two interfaces.
 Currently, there is no firewall functionality.
 However, all the other pieces are there.
 
@@ -10,30 +9,15 @@ There is a text rule parser that converts rules to be used by my program.
 This parser class also checks /proc/net/tcp to see whether ports are in use.
 This parser class also is able to log to a file in the current directory.
 
-There is a hashtable that has had modifications from project 2.
-It has been tested further and is flexible enough to be used in the logical
-places in this assignment. 
-
 There is a fully functioning ARP handling system. It runs on its own thread
 and responds to ARP requests within the network. It has been thoroughly tested
 and is known to work.
 
-I am planning on continuing to work on the core functionality, as most of the
-pieces are in place. The first thing that will be implemented is a cleaner
-forwarding abstraction. Right now I have ICMP functionaly working in my 
-firewall but it is poorly designed. Packets are just haphazardly forwarded.
+There is a communicator system that moves packets from one interface to another.
 
-Once that interface is done, it will be easy to enumerate over the set of rules
-and forward packets that need to be forwarded and drop those that do not.
+TODO:
+Fix UDP/TCP checksums to properly receive packets from a netspace.
+Spawn threads to mediate access between the netspace and the outside world.
+Implement the filter functionality. 
 
-UPDATE FROM LATE DAY.
-
-All inteface to interface communication works. The forwarding abstraction 
-has been fixed. There is something wrong with my TCP checksum calculation,
-but once I fix it, it will flow and I will be able to resolve webpages in 
-my virtual netspace. Once that is done, I can actually implement the 
-firewall rule checking... I know that's the core part of this project, but
-I have all of the other parts well implemented and tested. 
-
-Thanks for looking at the code.
-Akshay Dongaonkar (akd54).
+Maintained by Akshay Dongaonkar (akd54).

@@ -19,6 +19,9 @@ netspace:
 	sudo ip netns exec ep1 ip link set lo up
 	sudo ip netns exec ep1 route add default gw 10.0.0.1
 	sudo ip netns exec ep1 bash
+doc:
+	doxygen doc/Doxyfile
+	google-chrome doc/html/index.html
 clean:
 	cd src && make clean
 	cd reports/final && make clean
