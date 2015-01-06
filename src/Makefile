@@ -9,6 +9,7 @@ SRCS = defs.c 		\
 	parser.c 		\
 	arp-handler.c 	\
 	icmp.c 			\
+	rules.c 		\
 	firewall.c 
 HDRS = $(SRCS:.c=.h)
 

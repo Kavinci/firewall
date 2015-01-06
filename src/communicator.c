@@ -14,6 +14,7 @@
 #include "parser.h"
 
 nat_mapping_t safe_to_unsafe_mapping[PORT_RANGE];
+uint16_t unsafe_to_safe_mapping[PORT_RANGE];
 nat_mapping_t translation_ICMP[0xff];
 
 const char *global_interface;
@@ -31,6 +32,7 @@ void initialize_NAT_mappings()
 	for(i = 0; i < PORT_RANGE; i++)
 	{
 		safe_to_unsafe_mapping[i] = NULL;
+		unsafe_to_safe_mapping[i] = 0x00;
 
 		// unsafe_to_safe_mapping_udp[i] = NULL;
 		// unsafe_to_safe_mapping_tcp[i] = NULL;
@@ -232,14 +234,24 @@ void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
 		case PROTOCOL_UDP:
 			src_port = unpack_port(packet_udp->src_port);
 			ip_src = unpack_ip_addr(packet_ip->src_ip);
-			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
-			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+
+			if(!unsafe_to_safe_mapping[src_port])
+			{
+				nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
+				map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+				map->originator_ip_addr = ip_src;
+				map->originator_src_port = src_port;
+				pack_port(packet_udp->src_port,nat_port);
+				safe_to_unsafe_mapping[nat_port] = map;
+				unsafe_to_safe_mapping[src_port] = nat_port;
+			}
+			else
+			{
+				map = safe_to_unsafe_mapping[unsafe_to_safe_mapping[src_port]];
+				pack_port(packet_udp->src_port,unsafe_to_safe_mapping[src_port]);
+			}
 			set_up_outgoing_ether(map,packet_ether);
-			map->originator_ip_addr = ip_src;
-			map->originator_src_port = src_port;
 			pack_ip_addr(packet_ip->src_ip,my_src);
-			pack_port(packet_udp->src_port,nat_port);
-			safe_to_unsafe_mapping[nat_port] = map;
 			calculate_ip_checksum(packet_ip);
 			calculate_udp_checksum(packet_ip,packet_udp);
 			result = pcap_inject(out,packet_to_send,len);
@@ -251,15 +263,26 @@ void transfer_to_world(pcap_t *out,const u_char* packet_to_send,int len)
 		case PROTOCOL_TCP:
 			src_port = unpack_port(packet_tcp->src_port);
 			ip_src = unpack_ip_addr(packet_ip->src_ip);
-			nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
-			map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+
+			if(!unsafe_to_safe_mapping[src_port])
+			{
+				nat_port = get_open_port(DEFAULT_PORT_BEHAVIOR);
+				map = (nat_mapping_t)(malloc(sizeof(struct nat_mapping)));
+				map->originator_ip_addr = ip_src;
+				map->originator_src_port = src_port;
+				pack_port(packet_tcp->src_port,nat_port);
+				safe_to_unsafe_mapping[nat_port] = map;
+				unsafe_to_safe_mapping[src_port] = nat_port;
+			}
+			else
+			{
+				map = safe_to_unsafe_mapping[unsafe_to_safe_mapping[src_port]];
+				pack_port(packet_tcp->src_port,unsafe_to_safe_mapping[src_port]);
+			}
 			set_up_outgoing_ether(map,packet_ether);
-			map->originator_ip_addr = ip_src;
-			map->originator_src_port = src_port;
 			pack_ip_addr(packet_ip->src_ip,my_src);
-			pack_port(packet_tcp->src_port,nat_port);
-			safe_to_unsafe_mapping[nat_port] = map;
 			calculate_ip_checksum(packet_ip);
+			calculate_tcp_checksum(packet_ip,packet_tcp);
 			result = pcap_inject(out,packet_to_send,len);
 			if(result == -1)
 			{
@@ -320,6 +343,8 @@ void transfer_to_protected_space(pcap_t *out, const u_char *packet_to_send,int l
 		case PROTOCOL_UDP:
 			dst_port = unpack_port(packet_udp->dst_port);
 			map = safe_to_unsafe_mapping[dst_port];
+			if(map == NULL)
+				return;
 			set_up_ether_to_protected(map,packet_ether);
 
 			pack_and_convert_ip_addr(packet_ip->dst_ip,map->originator_ip_addr);
@@ -335,8 +360,9 @@ void transfer_to_protected_space(pcap_t *out, const u_char *packet_to_send,int l
 		case PROTOCOL_TCP:
 			dst_port = unpack_port(packet_tcp->dst_port);
 			map = safe_to_unsafe_mapping[dst_port];
+			if(map == NULL)
+				return;
 			set_up_ether_to_protected(map,packet_ether);
-
 			pack_and_convert_ip_addr(packet_ip->dst_ip,map->originator_ip_addr);
 			pack_port(packet_tcp->dst_port,map->originator_src_port);
 			calculate_ip_checksum(packet_ip);
@@ -349,10 +375,11 @@ void transfer_to_protected_space(pcap_t *out, const u_char *packet_to_send,int l
 		break;
 		case PROTOCOL_ICMP:
 			map = translation_ICMP[packet_ip->src_ip[0]];
+			if(map == NULL)
+				return;
 			set_up_ether_to_protected(map,packet_ether);
 			pack_and_convert_ip_addr(packet_ip->dst_ip,map->originator_ip_addr);
 			calculate_ip_checksum(packet_ip);
-
 			result = pcap_inject(out,packet_to_send,len);
 			if(result == -1)
 			{

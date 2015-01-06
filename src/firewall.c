@@ -12,6 +12,7 @@
 #include "parser.h"
 #include "arp-handler.h"
 #include "icmp.h"
+#include "rules.h"
 #include "communicator.h"
 
 const char *big_bad_world;
@@ -22,6 +23,7 @@ char my_mac_address[MAC_LENGTH + 1];
 
 pthread_t arp_server;
 pthread_t icmp_forwarder;
+pthread_t rule_enforcer;
 
 char *log_location = "log.txt";
 struct io pipes;
@@ -91,6 +93,18 @@ void run_icmp_forwarder()
 	}
 }
 
+void run_global_forwarder()
+{
+	pipes.input 	= big_bad_world;
+	pipes.output 	= protected_space;
+
+	if(pthread_create( &rule_enforcer, NULL, forward_tcp,(void *)(&pipes) ))
+	{
+		printf("Unable to create pipe pthread.\n");
+		exit(PIPE_CREATE_ERROR);
+	}
+}
+
 
 
 int main(int argc, char **argv)
@@ -119,7 +133,8 @@ int main(int argc, char **argv)
 	// CREATE ICMP FORWARDER - on average 27 ms delay
 	run_icmp_forwarder();
 
-
+	// THIS IS WHERE FIREWALL RULES ARE SUPPOSED TO GO
+	run_global_forwarder();
 
 	// WRITE TO LOG SOME ENTRIES. CURRENTLY NOTHING TO WRITE. 
 	// write_log(log_location,NULL);
