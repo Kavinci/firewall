@@ -20,7 +20,7 @@ netspace:
 	sudo ip netns exec ep1 route add default gw 10.0.0.1
 	sudo ip netns exec ep1 bash
 doc:
-	doxygen doc/firewall_doxyfile
+	doxygen doc/firewall_doxygen
 clean:
 	cd src && make clean
 	cd reports/final && make clean

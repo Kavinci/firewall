@@ -1,3 +1,7 @@
+/** @file arp-handler.c
+ *  @brief Implementation of arp-handler.h
+ *  @internal
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <pcap.h>
@@ -7,6 +11,14 @@
 const char *global_interface;
 char interface_server[MAC_LENGTH+1];
 
+/** @fn void get_hardware_address(const char *interface, char *address)
+ *  @brief Uses <sys/ioctl.h> to get HW addresses. 
+ *
+ *  @pre address is a valid 7 byte buffer.
+ *  @param interface The ethernet interface whose address is needed
+ *  @param address 7 byte buffer where interface address is filled
+ *  @returns hw address of \b interface in \b address
+ */
 void get_hardware_address(const char *interface, char *address)
 {
 	struct ifreq req;
@@ -33,6 +45,11 @@ void get_hardware_address(const char *interface, char *address)
 	}
 }
 
+/** @fn char* get_mac_address(const char *interface, char *address)    
+ *  @brief a memoized version of get hardware address
+ *    
+ *  @pre The interface being called never changes
+ */
 char* get_mac_address(const char *interface, char *address)
 {
 	if(interface_server[MAC_LENGTH] != '\0')
@@ -43,7 +60,17 @@ char* get_mac_address(const char *interface, char *address)
 }
 
 
-
+/** @internal
+ *  @fn void populate_response(char* resolve,char *address)
+ *  @brief prepopulate the response packet.
+ *  
+ *  @pre resolve is a buffer the size of a struct arp_packet
+ *  @pre address contains ethernet address and is null terminated
+ *  @param resolve A buffer containing an arp packet struct
+ *  @param address An address populated by get_mac_address
+ *  @return resolve packet is filled
+ *  
+ */
 void populate_response(char* resolve,char *address)
 {
 	int i;

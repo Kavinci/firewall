@@ -58,6 +58,11 @@ void initialize_rules(rule_t *rules)
 	}
 }
 
+/** @fn void graceful_exit(rule_t *rules);
+ *  @brief Free long running structures.
+ *  
+ *  If program works correctly, should never really happen.
+ */
 void graceful_exit(rule_t *rules)
 {
 	int i;
@@ -71,7 +76,11 @@ void graceful_exit(rule_t *rules)
 	free_port_structure();
 }
 
-
+/** @fn void run_arp_server()
+ *  @brief Spawns a thread that manages ARPs in the protected space
+ *
+ *  Main functionality documented in arp-handler.h
+ */
 void run_arp_server()
 {
 	int i;
@@ -86,6 +95,11 @@ void run_arp_server()
 	}
 }
 
+/** @fn void run_icmp_forwarder()
+ *  @brief Transfer ICMP packets between the protected/public space
+ *
+ *  Main functionality documented in icmp.h
+ */
 void run_icmp_forwarder()
 {
 	pipes.input 	= big_bad_world;

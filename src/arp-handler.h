@@ -1,3 +1,9 @@
+/** @file arp-handler.h
+ *  @brief ARP handling protocol within the protected space.
+ *  
+ *  Implemented functions include a hardware address generator.
+ *  There is also a main loop that resolves the ARP requests.
+ */
 #ifndef 	__ARP_HANDLER
 #define 	__ARP_HANDLER
 
@@ -13,7 +19,14 @@
 #define MAX_ARP_PACKET_SIZE 1024
 
 
-
+/** @struct arp_packet
+ *  @brief Packets that get injected or recovered from the protected netspace.
+ *
+ *  This is the structure of the packet that gets injected on the wire.
+ *  Notice that the ethernet frame is wrapped around the packet as well.
+ *  This is just because it is easier to deal with rather than having multiple
+ *  pointers.
+ */
 struct arp_packet
 {
 	uint8_t 	dst_mac[6];
@@ -35,7 +48,6 @@ typedef struct arp_packet* arp_packet_t;
 #define ARP_IP 0x0800
 
 void get_hardware_address(const char *interface, char *address);
-
 void *resolve_arp_requests(void *inter);
 
 // ERROR CODES
