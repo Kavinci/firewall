@@ -2,7 +2,7 @@ Firewall
 ========
 
 This is a simple firewall that mediates packets between two interfaces.
-Currently, there is no firewall functionality.
+Currently, only one rule at a time works.
 However, all the other pieces are there.
 
 There is a text rule parser that converts rules to be used by my program.
@@ -13,11 +13,11 @@ There is a fully functioning ARP handling system. It runs on its own thread
 and responds to ARP requests within the network. It has been thoroughly tested
 and is known to work.
 
-There is a communicator system that moves packets from one interface to another.
+There is a pipe that moves packets from the external interface to the internal interface.
 
 TODO:
-Fix UDP/TCP checksums to properly receive packets from a netspace.
+Fix TCP checksums to properly receive packets from a netspace.
 Spawn threads to mediate access between the netspace and the outside world.
-Implement the filter functionality. 
+Correctly implement the filter functionality. 
 
 Maintained by Akshay Dongaonkar (akd54).
